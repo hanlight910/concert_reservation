@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  email       String        @unique
+  name        String
+  user_id     Int           @id @default(autoincrement())
+  password    String
+  role        Role          @default(USER)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+  performance Performance[]
+  reservation Reservation[]
+  wallet      Wallet?
+}
+
+model Performance {
+  created_at       DateTime               @default(now())
+  updated_at       DateTime               @updatedAt
+  content          String?
+  performance_id   Int                    @id @default(autoincrement())
+  performance_name String
+  price            String
+  venue            String
+  user_id          Int
+  user             User                   @relation(fields: [user_id], references: [user_id])
+  schedule         Performance_Schedule[]
+  category         Category[]             @relation("CategoryToPerformance")
+
+  @@index([performance_name, content, venue])
+  @@index([user_id], map: "Performance_user_id_fkey")
+}
+
+model Performance_Seat {
+  created_at  DateTime             @default(now())
+  updated_at  DateTime             @updatedAt
+  seat_number String
+  price       Int
+  grade       String
+  schedule_id Int
+  seat_id     Int                  @id @default(autoincrement())
+  performance Performance_Schedule @relation(fields: [schedule_id], references: [schedule_id])
+  reservation Reservation?
+
+  @@index([schedule_id, grade, seat_number], map: "Performance_Seat_performance_id_fkey")
+}
+
+model Wallet {
+  point     Int
+  user_id   Int  @unique
+  wallet_id Int  @id @default(autoincrement())
+  user      User @relation(fields: [user_id], references: [user_id])
+
+  @@index([user_id])
+}
+
+model Performance_Schedule {
+  schedule_id    Int                @id @default(autoincrement())
+  date           String
+  performance_id Int
+  performance    Performance        @relation(fields: [performance_id], references: [performance_id])
+  seat           Performance_Seat[]
+
+  @@index([performance_id], map: "Performance_Schedule_performance_id_fkey")
+}
+
+model Reservation {
+  created_at     DateTime            @default(now())
+  user_id        Int
+  reservation_id Int                 @id @default(autoincrement())
+  seat_id        Int                 @unique
+  seat           Performance_Seat    @relation(fields: [seat_id], references: [seat_id])
+  user           User                @relation(fields: [user_id], references: [user_id])
+  detail         Reservation_detail?
+
+  @@index([seat_id])
+  @@index([user_id], map: "Reservation_user_id_fkey")
+}
+
+model Reservation_detail {
+  reservation_id   Int         @id
+  performance_name String
+  venue            String
+  seat_number      String
+  grade            String
+  date             String
+  reservation      Reservation @relation(fields: [reservation_id], references: [reservation_id], onDelete: Cascade)
+}
+
+model Category {
+  category_id   Int           @id @default(autoincrement())
+  category_name String
+  performance   Performance[] @relation("CategoryToPerformance")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
